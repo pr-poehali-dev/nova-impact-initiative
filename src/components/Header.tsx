@@ -2,7 +2,7 @@ import { MobileMenu } from "./MobileMenu";
 
 export const Header = () => {
   return (
-    <div className="fixed z-50 pt-8 md:pt-14 top-0 left-0 w-full">
+    <div className="fixed z-50 pt-4 sm:pt-6 md:pt-10 top-0 left-0 w-full">
       <header className="flex items-center justify-between container">
         <a href="/" className="font-mono text-sm uppercase tracking-widest text-foreground font-bold">
           ИИ ШОУ
