@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Countdown } from "./Countdown";
 
 export function CTA() {
   return (
@@ -8,10 +9,13 @@ export function CTA() {
           Действуйте сейчас
         </p>
         <h2 className="font-sentient text-3xl sm:text-4xl md:text-6xl leading-tight mb-4 sm:mb-6">
-          До события — 25 дней.<br />
+          До события осталось:<br />
           <i className="font-light">Свободных мест — единицы.</i>
         </h2>
-        <p className="font-mono text-sm text-foreground/50 leading-relaxed mb-3 sm:mb-4 max-w-lg mx-auto">
+
+        <Countdown />
+
+        <p className="font-mono text-sm text-foreground/50 leading-relaxed mt-8 mb-3 sm:mb-4 max-w-lg mx-auto">
           Каждый день ожидания — это день, когда ваш конкурент мог занять ваше место рядом со сценой.
         </p>
         <p className="font-mono text-sm text-primary/80 mb-8 sm:mb-12">
