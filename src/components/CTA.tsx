@@ -25,7 +25,7 @@ export function CTA() {
           🔴 Напишите сейчас — медиакит пришлём в течение часа
         </p>
 
-        <a href="https://t.me/" className="contents">
+        <a href="https://t.me/DashaChernikova8" target="_blank" rel="noopener noreferrer" className="contents">
           <Button size="lg" className="text-sm sm:text-base w-full sm:w-auto">
             [Написать и получить медиакит →]
           </Button>
