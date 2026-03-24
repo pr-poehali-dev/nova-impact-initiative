@@ -117,8 +117,8 @@
   );
 }
 
-/* Solid background for content sections below Hero */
+/* Semi-transparent background for content sections below Hero */
 .content-section {
-  background: rgba(0, 0, 0, 0.92);
-  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
 }
