@@ -119,6 +119,6 @@
 
 /* Semi-transparent background for content sections below Hero */
 .content-section {
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(8px);
 }

@@ -3,6 +3,7 @@ import { Pill } from "./Pill";
 import { Button } from "./ui/button";
 import { useState } from "react";
 import { Header } from "./Header";
+import { Countdown } from "./Countdown";
 
 export function Hero() {
   const [hovering, setHovering] = useState(false);
@@ -25,6 +26,8 @@ export function Hero() {
         <p className="font-mono text-xs text-primary/80 mt-4 max-w-[400px] mx-auto">
           ⚡ Пока вы читаете — одно из мест уже рассматривает ваш конкурент
         </p>
+
+        <Countdown />
 
         <div className="flex items-center justify-center gap-4 mt-10 flex-wrap">
           <a className="contents max-sm:hidden" href="#packages">
