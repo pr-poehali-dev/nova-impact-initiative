@@ -7,7 +7,7 @@ export function Stats() {
   ];
 
   return (
-    <section className="relative z-10 border-t border-border/30">
+    <section className="content-section relative z-10 border-t border-border/30">
       <div className="container">
         <div className="grid grid-cols-2 md:grid-cols-4">
           {stats.map((stat, i) => (

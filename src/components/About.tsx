@@ -7,7 +7,7 @@ export function About() {
   ];
 
   return (
-    <section id="about" className="relative z-10 py-24 md:py-32 border-t border-border/30">
+    <section id="about" className="content-section relative z-10 py-24 md:py-32 border-t border-border/30">
       <div className="container">
         <div className="grid md:grid-cols-2 gap-16 items-start">
           <div>

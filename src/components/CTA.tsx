@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 
 export function CTA() {
   return (
-    <section id="cta" className="relative z-10 py-24 md:py-40 border-t border-border/30">
+    <section id="cta" className="content-section relative z-10 py-24 md:py-40 border-t border-border/30">
       <div className="container text-center max-w-3xl mx-auto">
         <p className="font-mono text-xs uppercase text-foreground/40 tracking-widest mb-6">
           Действуйте сейчас

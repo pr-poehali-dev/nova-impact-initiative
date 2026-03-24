@@ -33,7 +33,7 @@ const benefits = [
 
 export function Benefits() {
   return (
-    <section id="benefits" className="relative z-10 py-24 md:py-32 border-t border-border/30">
+    <section id="benefits" className="content-section relative z-10 py-24 md:py-32 border-t border-border/30">
       <div className="container">
         <div className="mb-16">
           <p className="font-mono text-xs uppercase text-foreground/40 tracking-widest mb-6">
