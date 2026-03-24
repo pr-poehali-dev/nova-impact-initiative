@@ -9,38 +9,30 @@ export function Hero() {
   const [hovering, setHovering] = useState(false);
 
   return (
-    <div className="flex flex-col h-svh justify-between relative z-10">
+    <div className="flex flex-col min-h-svh justify-between relative z-10">
       <GL hovering={hovering} />
       <Header />
 
-      <div className="pb-16 mt-auto text-center relative">
-        <Pill className="mb-6">18 апреля 2026 · Владивосток</Pill>
-        <h1 className="text-5xl sm:text-6xl md:text-7xl font-sentient leading-tight">
+      <div className="pb-10 sm:pb-16 md:pb-24 mt-auto text-center relative px-4">
+        <Pill className="mb-4 sm:mb-6">18 апреля 2026 · Владивосток</Pill>
+        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-sentient leading-tight">
           250 предпринимателей<br />
           увидят ваш бренд<br />
           <i className="font-light">в один день</i>
         </h1>
-        <p className="font-mono text-sm sm:text-base text-foreground/60 text-balance mt-8 max-w-[500px] mx-auto">
+        <p className="font-mono text-sm sm:text-base text-foreground/60 text-balance mt-5 sm:mt-8 max-w-[500px] mx-auto">
           Один день. Одна аудитория. Результат, который работает месяцами.
         </p>
-        <p className="font-mono text-xs text-primary/80 mt-4 max-w-[400px] mx-auto">
+        <p className="font-mono text-xs text-primary/80 mt-3 sm:mt-4 max-w-[400px] mx-auto px-4">
           ⚡ Пока вы читаете — одно из мест уже рассматривает ваш конкурент
         </p>
 
         <Countdown />
 
-        <div className="flex items-center justify-center gap-4 mt-10 flex-wrap">
-          <a className="contents max-sm:hidden" href="#packages">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mt-8 sm:mt-10">
+          <a href="#packages" className="w-full sm:w-auto">
             <Button
-              onMouseEnter={() => setHovering(true)}
-              onMouseLeave={() => setHovering(false)}
-            >
-              [Выбрать пакет]
-            </Button>
-          </a>
-          <a className="contents sm:hidden" href="#packages">
-            <Button
-              size="sm"
+              className="w-full sm:w-auto"
               onMouseEnter={() => setHovering(true)}
               onMouseLeave={() => setHovering(false)}
             >

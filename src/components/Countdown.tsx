@@ -27,23 +27,25 @@ export function Countdown() {
     return () => clearInterval(id);
   }, []);
 
+  const items = [
+    { value: time.days, label: "дней" },
+    { value: time.hours, label: "часов" },
+    { value: time.minutes, label: "минут" },
+    { value: time.seconds, label: "секунд" },
+  ];
+
   return (
-    <div className="flex items-center justify-center gap-3 mt-8 font-mono">
-      {[
-        { value: time.days, label: "дней" },
-        { value: time.hours, label: "часов" },
-        { value: time.minutes, label: "минут" },
-        { value: time.seconds, label: "секунд" },
-      ].map(({ value, label }, i) => (
-        <div key={label} className="flex items-start gap-3">
+    <div className="flex items-center justify-center gap-2 sm:gap-4 mt-6 sm:mt-8 font-mono">
+      {items.map(({ value, label }, i) => (
+        <div key={label} className="flex items-start gap-2 sm:gap-4">
           {i > 0 && (
-            <span className="text-2xl text-foreground/30 leading-none mt-1">:</span>
+            <span className="text-xl sm:text-2xl text-foreground/30 leading-none mt-1">:</span>
           )}
-          <div className="flex flex-col items-center">
-            <span className="text-3xl sm:text-4xl font-bold text-foreground tabular-nums leading-none">
+          <div className="flex flex-col items-center min-w-[40px] sm:min-w-[52px]">
+            <span className="text-2xl sm:text-4xl font-bold text-foreground tabular-nums leading-none">
               {pad(value)}
             </span>
-            <span className="text-[10px] uppercase tracking-widest text-foreground/40 mt-1">
+            <span className="text-[9px] sm:text-[10px] uppercase tracking-widest text-foreground/40 mt-1">
               {label}
             </span>
           </div>
