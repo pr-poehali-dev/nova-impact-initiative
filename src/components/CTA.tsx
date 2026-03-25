@@ -18,16 +18,25 @@ export function CTA() {
           <i className="font-light">Свободных мест — единицы.</i>
         </h2>
 
-        <div className="inline-flex flex-col gap-3 mb-8 sm:mb-10 text-left">
-          <p className="font-mono text-xs uppercase text-foreground/40 tracking-widest mb-1">Свободные слоты</p>
-          <div className="flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
-            <span className="font-mono text-sm text-foreground/80">Генеральный партнёр — <span className="text-foreground font-semibold">1</span></span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-foreground/40 shrink-0" />
-            <span className="font-mono text-sm text-foreground/80">Партнёр Standard — <span className="text-foreground font-semibold">7</span></span>
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 border border-border/30 rounded-lg overflow-hidden mb-8 sm:mb-10">
+          {[
+            { value: "250+", label: "Предпринимателей" },
+            { value: "6+", label: "Спикеров" },
+            { value: "18.04", label: "Дата события" },
+            { value: "1", label: "Место генерального партнёра" },
+          ].map((stat, i) => (
+            <div
+              key={i}
+              className={`py-6 px-4 flex flex-col items-center justify-center border-border/30
+                ${i % 2 === 0 ? "border-r" : ""}
+                ${i < 2 ? "border-b md:border-b-0" : ""}
+                md:border-r md:last:border-r-0
+              `}
+            >
+              <span className="font-sentient text-2xl sm:text-3xl text-primary">{stat.value}</span>
+              <span className="font-mono text-[10px] sm:text-xs uppercase text-foreground/50 mt-1 tracking-wider text-balance text-center">{stat.label}</span>
+            </div>
+          ))}
         </div>
 
         <p className="font-mono text-sm text-foreground/50 leading-relaxed mb-3 sm:mb-4 max-w-lg mx-auto">
