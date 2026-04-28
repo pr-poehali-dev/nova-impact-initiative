@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { generatePost, createPost, uploadMedia } from '@/lib/api';
+import { generatePost, generateImages, createPost, uploadMedia } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,8 @@ const PLATFORMS: { id: Platform; label: string; icon: string; color: string }[] 
   { id: 'dzen', label: 'Яндекс Дзен', icon: 'BookOpen', color: 'text-orange-400' },
 ];
 
+const IMAGE_COUNTS = [1, 2, 3, 5];
+
 export default function CreatePost() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -26,8 +28,9 @@ export default function CreatePost() {
   const [content, setContent] = useState('');
   const [topic, setTopic] = useState(newsItem?.title || '');
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(['telegram']);
-  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; preview: string; base64: string }[]>([]);
-  const [postId, setPostId] = useState<number | null>(null);
+  const [imageCount, setImageCount] = useState(3);
+  const [generatedImages, setGeneratedImages] = useState<{ url: string; prompt: string }[]>([]);
+  const [savedPostId, setSavedPostId] = useState<number | null>(null);
 
   const generateMutation = useMutation({
     mutationFn: () =>
@@ -39,27 +42,42 @@ export default function CreatePost() {
     onSuccess: (res) => {
       setContent(res.content);
       setTitle(res.title);
+      setGeneratedImages([]);
       toast.success('Пост сгенерирован');
     },
     onError: () => toast.error('Ошибка генерации. Проверьте настройки API'),
   });
 
+  const imagesMutation = useMutation({
+    mutationFn: () =>
+      generateImages({
+        content,
+        post_id: savedPostId || undefined,
+        count: imageCount,
+      }),
+    onSuccess: (res) => {
+      if (res.images.length > 0) {
+        setGeneratedImages(res.images);
+        toast.success(`Сгенерировано ${res.images.length} изображений`);
+      }
+      if (res.errors.length > 0) {
+        toast.error(`${res.errors.length} изображений не удалось создать`);
+      }
+    },
+    onError: () => toast.error('Ошибка генерации изображений'),
+  });
+
   const saveMutation = useMutation({
     mutationFn: async (status: 'draft' | 'scheduled') => {
       const post = await createPost({ title, content, status });
-      setPostId(post.post.id);
-
-      for (const file of uploadedFiles) {
-        await uploadMedia(post.post.id, file.base64, file.name);
-      }
-
+      setSavedPostId(post.post.id);
       return post;
     },
-    onSuccess: (_, status) => {
+    onSuccess: (post, status) => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
       if (status === 'scheduled') {
-        navigate('/calendar', { state: { post_id: postId } });
+        navigate('/calendar', { state: { post_id: post.post.id } });
       } else {
         toast.success('Пост сохранён как черновик');
         navigate('/posts');
@@ -74,23 +92,8 @@ export default function CreatePost() {
     );
   };
 
-  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const base64 = (ev.target?.result as string).split(',')[1];
-        setUploadedFiles((prev) => [
-          ...prev,
-          { name: file.name, preview: ev.target?.result as string, base64 },
-        ]);
-      };
-      reader.readAsDataURL(file);
-    });
-  }, []);
-
-  const removeFile = (index: number) => {
-    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
+  const removeImage = (index: number) => {
+    setGeneratedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const charCount = content.length;
@@ -110,7 +113,7 @@ export default function CreatePost() {
         </div>
       )}
 
-      {/* Topic & Generate */}
+      {/* Topic & Generate text */}
       <div className="gradient-card rounded-xl p-5 space-y-4">
         <h2 className="font-semibold text-foreground flex items-center gap-2">
           <Icon name="Sparkles" size={16} className="text-primary" />
@@ -137,7 +140,6 @@ export default function CreatePost() {
           </Button>
         </div>
 
-        {/* Platform selector */}
         <div>
           <p className="text-xs text-muted-foreground mb-2">Адаптировать для платформы:</p>
           <div className="flex gap-2 flex-wrap">
@@ -187,44 +189,96 @@ export default function CreatePost() {
         </div>
       </div>
 
-      {/* Media upload */}
+      {/* AI Image generation */}
       <div className="gradient-card rounded-xl p-5 space-y-4">
-        <h2 className="font-semibold text-foreground flex items-center gap-2">
-          <Icon name="Images" size={16} className="text-primary" />
-          Карусель изображений
-        </h2>
-        <label className="flex flex-col items-center justify-center gap-2 p-6 rounded-lg border-2 border-dashed border-border hover:border-primary transition-colors cursor-pointer">
-          <Icon name="Upload" size={24} className="text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
-            Загрузите референсы для карусели
-          </span>
-          <span className="text-xs text-muted-foreground">PNG, JPG, GIF до 10MB</span>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileUpload}
-          />
-        </label>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-foreground flex items-center gap-2">
+            <Icon name="Images" size={16} className="text-primary" />
+            Карусель изображений
+          </h2>
+          <span className="text-xs text-muted-foreground">ИИ генерирует по контексту поста</span>
+        </div>
 
-        {uploadedFiles.length > 0 && (
-          <div className="flex gap-3 flex-wrap">
-            {uploadedFiles.map((file, i) => (
-              <div key={i} className="relative group">
-                <img
-                  src={file.preview}
-                  alt={file.name}
-                  className="w-20 h-20 object-cover rounded-lg border border-border"
-                />
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Количество:</span>
+            <div className="flex gap-1">
+              {IMAGE_COUNTS.map((n) => (
                 <button
-                  onClick={() => removeFile(i)}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive rounded-full hidden group-hover:flex items-center justify-center"
+                  key={n}
+                  onClick={() => setImageCount(n)}
+                  className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                    imageCount === n
+                      ? 'bg-primary text-white'
+                      : 'bg-muted text-muted-foreground hover:text-foreground'
+                  }`}
                 >
-                  <Icon name="X" size={10} className="text-white" />
+                  {n}
                 </button>
-                <div className="absolute bottom-0 left-0 right-0 bg-black/60 rounded-b-lg px-1 py-0.5">
-                  <p className="text-xs text-white truncate">{i + 1}</p>
+              ))}
+            </div>
+          </div>
+
+          <Button
+            onClick={() => imagesMutation.mutate()}
+            disabled={imagesMutation.isPending || !content}
+            variant="outline"
+            className="flex-1 gap-2"
+          >
+            {imagesMutation.isPending ? (
+              <>
+                <Icon name="Loader2" size={16} className="animate-spin" />
+                Генерирую {imageCount} изображений...
+              </>
+            ) : (
+              <>
+                <Icon name="Wand2" size={16} className="text-primary" />
+                Сгенерировать изображения
+              </>
+            )}
+          </Button>
+        </div>
+
+        {!content && (
+          <p className="text-xs text-muted-foreground text-center py-2">
+            Сначала сгенерируйте или напишите текст поста
+          </p>
+        )}
+
+        {imagesMutation.isPending && (
+          <div className="grid grid-cols-3 gap-3">
+            {Array.from({ length: imageCount }).map((_, i) => (
+              <div
+                key={i}
+                className="aspect-square rounded-lg bg-muted animate-pulse flex flex-col items-center justify-center gap-2"
+              >
+                <Icon name="ImageOff" size={20} className="text-muted-foreground/40" />
+                <span className="text-xs text-muted-foreground/40">Генерирую...</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {generatedImages.length > 0 && (
+          <div className="grid grid-cols-3 gap-3">
+            {generatedImages.map((img, i) => (
+              <div key={i} className="relative group aspect-square">
+                <img
+                  src={img.url}
+                  alt={`Изображение ${i + 1}`}
+                  className="w-full h-full object-cover rounded-lg border border-border"
+                />
+                <div className="absolute inset-0 bg-black/60 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
+                  <p className="text-xs text-white text-center line-clamp-4">{img.prompt}</p>
+                  <button
+                    onClick={() => removeImage(i)}
+                    className="w-7 h-7 bg-destructive rounded-full flex items-center justify-center mt-1"
+                  >
+                    <Icon name="Trash2" size={12} className="text-white" />
+                  </button>
+                </div>
+                <div className="absolute top-1.5 left-1.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center">
+                  <span className="text-white text-[10px] font-bold">{i + 1}</span>
                 </div>
               </div>
             ))}

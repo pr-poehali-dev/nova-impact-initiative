@@ -1,7 +1,10 @@
 import json
 import os
+import base64
+import time
 import psycopg2
 import urllib.request
+import boto3
 
 CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
@@ -19,6 +22,15 @@ PLATFORM_PROMPTS = {
 
 def get_conn():
     return psycopg2.connect(os.environ['DATABASE_URL'])
+
+
+def get_s3():
+    return boto3.client(
+        's3',
+        endpoint_url='https://bucket.poehali.dev',
+        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+    )
 
 
 def get_openai_key(cur) -> str:
@@ -48,12 +60,49 @@ def call_openai(api_key: str, prompt: str, system: str) -> dict:
         method='POST',
     )
     with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read())
+
+
+def make_image_prompt(api_key: str, post_content: str, index: int, total: int) -> str:
+    system = (
+        "You are an expert at writing image generation prompts. "
+        "Based on an AI/tech post, write a short English prompt for FLUX image generator. "
+        "Style: futuristic digital art, clean, professional, 4k. "
+        "Return ONLY the prompt, no quotes, max 80 words."
+    )
+    user = (
+        f"Create prompt #{index + 1} of {total} for this AI post. "
+        f"Each image must show a different visual aspect:\n\n{post_content[:600]}"
+    )
+    result = call_openai(api_key, user, system)
+    return result['choices'][0]['message']['content'].strip()
+
+
+def generate_flux_image(prompt: str) -> bytes:
+    payload = json.dumps({'prompt': prompt, 'width': 1024, 'height': 1024}).encode()
+    req = urllib.request.Request(
+        'https://api.poehali.dev/flux/generate',
+        data=payload,
+        headers={'Content-Type': 'application/json'},
+        method='POST',
+    )
+    with urllib.request.urlopen(req, timeout=90) as resp:
         result = json.loads(resp.read())
-    return result
+    image_b64 = result.get('image') or result.get('data') or result.get('b64_json', '')
+    if not image_b64:
+        raise ValueError(f'No image in response: {list(result.keys())}')
+    return base64.b64decode(image_b64)
+
+
+def upload_to_s3(image_bytes: bytes, filename: str) -> str:
+    s3 = get_s3()
+    key = f'generated/{filename}'
+    s3.put_object(Bucket='files', Key=key, Body=image_bytes, ContentType='image/png')
+    return f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
 
 
 def handler(event: dict, context) -> dict:
-    """Генерация текста поста через OpenAI на основе новости или темы"""
+    """Генерация текста поста и изображений карусели через OpenAI + FLUX"""
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': ''}
 
@@ -61,7 +110,62 @@ def handler(event: dict, context) -> dict:
     cur = conn.cursor()
 
     try:
+        body = json.loads(event.get('body') or '{}')
+        action = body.get('action', 'text')
         api_key = get_openai_key(cur)
+
+        # --- Генерация изображений для карусели ---
+        if action == 'images':
+            post_content = body.get('content', '')
+            post_id = body.get('post_id')
+            count = min(int(body.get('count', 3)), 5)
+
+            if not post_content:
+                return {'statusCode': 400, 'headers': CORS_HEADERS,
+                        'body': json.dumps({'error': 'content обязателен'})}
+            if not api_key:
+                return {'statusCode': 400, 'headers': CORS_HEADERS,
+                        'body': json.dumps({'error': 'OpenAI API ключ не настроен'})}
+
+            generated = []
+            errors = []
+
+            for i in range(count):
+                try:
+                    img_prompt = make_image_prompt(api_key, post_content, i, count)
+                    full_prompt = f"futuristic AI technology, {img_prompt}, digital art, 4k, professional, no text"
+                    image_bytes = generate_flux_image(full_prompt)
+                    filename = f'ai_{int(time.time())}_{i}.png'
+                    cdn_url = upload_to_s3(image_bytes, filename)
+
+                    if post_id:
+                        cur.execute("""
+                            SELECT COALESCE(MAX(sort_order), -1) + 1 FROM media_files WHERE post_id = %s
+                        """, (post_id,))
+                        sort_order = cur.fetchone()[0]
+                        cur.execute("""
+                            INSERT INTO media_files (post_id, filename, cdn_url, file_type, sort_order)
+                            VALUES (%s, %s, %s, 'image', %s)
+                        """, (post_id, filename, cdn_url, sort_order))
+                        cur.execute("""
+                            UPDATE posts SET image_urls = array_append(COALESCE(image_urls, '{}'), %s)
+                            WHERE id = %s
+                        """, (cdn_url, post_id))
+
+                    generated.append({'url': cdn_url, 'prompt': img_prompt})
+                except Exception as e:
+                    errors.append({'index': i, 'error': str(e)})
+
+            if post_id and generated:
+                conn.commit()
+
+            return {
+                'statusCode': 200,
+                'headers': CORS_HEADERS,
+                'body': json.dumps({'images': generated, 'errors': errors}),
+            }
+
+        # --- Генерация текста поста ---
         if not api_key:
             return {
                 'statusCode': 400,
@@ -69,7 +173,6 @@ def handler(event: dict, context) -> dict:
                 'body': json.dumps({'error': 'OpenAI API ключ не настроен. Добавьте его в Настройках.'}),
             }
 
-        body = json.loads(event.get('body') or '{}')
         news_id = body.get('news_id')
         topic = body.get('topic', '')
         platform = body.get('platform', 'telegram')
@@ -82,13 +185,11 @@ def handler(event: dict, context) -> dict:
                 news_context = f'Новость: {row[0]}\nСуть: {row[1] or ""}\nИсточник: {row[2] or ""}'
 
         platform_hint = PLATFORM_PROMPTS.get(platform, PLATFORM_PROMPTS['telegram'])
-
         system_prompt = f"""Ты — эксперт по контент-маркетингу в сфере ИИ и нейросетей.
-Твоя задача — создавать вирусный, интересный контент на русском языке для аудитории, интересующейся AI.
+Создавай вирусный контент на русском языке для аудитории, интересующейся AI.
 {platform_hint}
-Всегда возвращай JSON: {{"title": "заголовок поста", "content": "полный текст поста"}}"""
+Всегда возвращай JSON: {{"title": "заголовок", "content": "текст поста"}}"""
 
-        user_prompt = ''
         if news_context:
             user_prompt = f'Напиши пост на основе этой новости:\n{news_context}'
         elif topic:

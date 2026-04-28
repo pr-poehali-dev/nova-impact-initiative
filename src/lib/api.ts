@@ -51,8 +51,18 @@ export const fetchTrends = () =>
 export const generatePost = (data: { news_id?: number; topic?: string; platform?: string }) =>
   request<{ content: string; title: string }>(getUrl('generate-post'), {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify({ action: 'text', ...data }),
   });
+
+// Generate carousel images based on post content
+export const generateImages = (data: { content: string; post_id?: number; count?: number }) =>
+  request<{ images: { url: string; prompt: string }[]; errors: { index: number; error: string }[] }>(
+    getUrl('generate-post'),
+    {
+      method: 'POST',
+      body: JSON.stringify({ action: 'images', ...data }),
+    }
+  );
 
 // Schedule
 export const getSchedule = (month?: string) =>
