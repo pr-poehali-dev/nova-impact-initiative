@@ -33,25 +33,21 @@ def get_s3():
     )
 
 
-def get_openai_key(cur) -> str:
-    cur.execute("SELECT value FROM app_settings WHERE key = 'openai_api_key'")
-    row = cur.fetchone()
-    return row[0] if row else os.environ.get('OPENAI_API_KEY', '')
-
-
-def call_openai(api_key: str, prompt: str, system: str) -> dict:
+def call_groq(prompt: str, system: str) -> str:
+    """Вызов Groq API (llama-3.3-70b) для генерации текста"""
+    api_key = os.environ['GROQ_API_KEY']
     payload = json.dumps({
-        'model': 'gpt-4o-mini',
+        'model': 'llama-3.3-70b-versatile',
         'messages': [
             {'role': 'system', 'content': system},
             {'role': 'user', 'content': prompt},
         ],
-        'max_tokens': 1000,
+        'max_tokens': 1500,
         'temperature': 0.8,
     }).encode()
 
     req = urllib.request.Request(
-        'https://api.openai.com/v1/chat/completions',
+        'https://api.groq.com/openai/v1/chat/completions',
         data=payload,
         headers={
             'Authorization': f'Bearer {api_key}',
@@ -60,10 +56,11 @@ def call_openai(api_key: str, prompt: str, system: str) -> dict:
         method='POST',
     )
     with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read())
+        result = json.loads(resp.read())
+    return result['choices'][0]['message']['content'].strip()
 
 
-def make_image_prompt(api_key: str, post_content: str, index: int, total: int) -> str:
+def make_image_prompt(post_content: str, index: int, total: int) -> str:
     system = (
         "You are an expert at writing image generation prompts. "
         "Based on an AI/tech post, write a short English prompt for FLUX image generator. "
@@ -74,8 +71,7 @@ def make_image_prompt(api_key: str, post_content: str, index: int, total: int) -
         f"Create prompt #{index + 1} of {total} for this AI post. "
         f"Each image must show a different visual aspect:\n\n{post_content[:600]}"
     )
-    result = call_openai(api_key, user, system)
-    return result['choices'][0]['message']['content'].strip()
+    return call_groq(user, system)
 
 
 def generate_flux_image(prompt: str) -> bytes:
@@ -102,7 +98,7 @@ def upload_to_s3(image_bytes: bytes, filename: str) -> str:
 
 
 def handler(event: dict, context) -> dict:
-    """Генерация текста поста и изображений карусели через OpenAI + FLUX"""
+    """Генерация текста поста и изображений карусели через Groq (llama-3.3-70b) + FLUX"""
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': ''}
 
@@ -112,7 +108,6 @@ def handler(event: dict, context) -> dict:
     try:
         body = json.loads(event.get('body') or '{}')
         action = body.get('action', 'text')
-        api_key = get_openai_key(cur)
 
         # --- Генерация изображений для карусели ---
         if action == 'images':
@@ -123,16 +118,13 @@ def handler(event: dict, context) -> dict:
             if not post_content:
                 return {'statusCode': 400, 'headers': CORS_HEADERS,
                         'body': json.dumps({'error': 'content обязателен'})}
-            if not api_key:
-                return {'statusCode': 400, 'headers': CORS_HEADERS,
-                        'body': json.dumps({'error': 'OpenAI API ключ не настроен'})}
 
             generated = []
             errors = []
 
             for i in range(count):
                 try:
-                    img_prompt = make_image_prompt(api_key, post_content, i, count)
+                    img_prompt = make_image_prompt(post_content, i, count)
                     full_prompt = f"futuristic AI technology, {img_prompt}, digital art, 4k, professional, no text"
                     image_bytes = generate_flux_image(full_prompt)
                     filename = f'ai_{int(time.time())}_{i}.png'
@@ -166,13 +158,6 @@ def handler(event: dict, context) -> dict:
             }
 
         # --- Генерация текста поста ---
-        if not api_key:
-            return {
-                'statusCode': 400,
-                'headers': CORS_HEADERS,
-                'body': json.dumps({'error': 'OpenAI API ключ не настроен. Добавьте его в Настройках.'}),
-            }
-
         news_id = body.get('news_id')
         topic = body.get('topic', '')
         platform = body.get('platform', 'telegram')
@@ -186,7 +171,7 @@ def handler(event: dict, context) -> dict:
 
         platform_hint = PLATFORM_PROMPTS.get(platform, PLATFORM_PROMPTS['telegram'])
         system_prompt = f"""Ты — эксперт по контент-маркетингу в сфере ИИ и нейросетей.
-Создавай вирусный контент на русском языке для аудитории, интересующейся AI.
+Создавай вирусный, интересный контент на русском языке для аудитории, интересующейся AI.
 {platform_hint}
 Всегда возвращай JSON: {{"title": "заголовок", "content": "текст поста"}}"""
 
@@ -197,8 +182,7 @@ def handler(event: dict, context) -> dict:
         else:
             user_prompt = 'Напиши пост о последних трендах в мире ИИ'
 
-        result = call_openai(api_key, user_prompt, system_prompt)
-        text = result['choices'][0]['message']['content'].strip()
+        text = call_groq(user_prompt, system_prompt)
 
         try:
             if text.startswith('```'):

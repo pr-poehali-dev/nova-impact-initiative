@@ -1,12 +1,10 @@
 {
   "tests": [
     {
-      "name": "Generate post - no API key",
-      "method": "POST",
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
       "path": "/",
-      "body": {"topic": "ChatGPT"},
-      "expectedStatus": 400,
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     }
   ]
 }

@@ -95,47 +95,17 @@ export default function Settings() {
         </p>
       </div>
 
-      {/* OpenAI */}
-      <div className="gradient-card rounded-xl p-5 space-y-4">
+      {/* AI info */}
+      <div className="gradient-card rounded-xl p-4 border border-primary/20">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-purple-500/20 flex items-center justify-center">
-            <Icon name="Sparkles" size={18} className="text-purple-400" />
+          <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+            <Icon name="Sparkles" size={18} className="text-primary" />
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">OpenAI API</h3>
-            <p className="text-xs text-muted-foreground">Для генерации текста постов</p>
+            <p className="font-medium text-foreground text-sm">ИИ для генерации текста подключён</p>
+            <p className="text-xs text-muted-foreground">Посты генерируются автоматически — ничего настраивать не нужно</p>
           </div>
-        </div>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs text-muted-foreground mb-1.5 block">API Key</label>
-            <div className="flex gap-2">
-              <Input
-                type="password"
-                placeholder="sk-proj-..."
-                value={formData['openai']?.api_key || ''}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    openai: { ...prev.openai, api_key: e.target.value },
-                  }))
-                }
-              />
-              <Button
-                onClick={() => {
-                  if (formData['openai']?.api_key) {
-                    updateMutation.mutate({
-                      platform: 'openai',
-                      data: { api_key: formData['openai'].api_key },
-                    });
-                  }
-                }}
-                className="whitespace-nowrap"
-              >
-                Сохранить
-              </Button>
-            </div>
-          </div>
+          <span className="w-2 h-2 rounded-full bg-green-500 shrink-0 ml-auto" />
         </div>
       </div>
 
