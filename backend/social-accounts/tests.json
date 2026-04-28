@@ -1,11 +1,10 @@
 {
   "tests": [
     {
-      "name": "Get accounts",
+      "name": "GET social accounts",
       "method": "GET",
       "path": "/",
-      "expectedStatus": 200,
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     }
   ]
 }

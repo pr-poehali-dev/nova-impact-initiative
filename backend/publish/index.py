@@ -15,11 +15,26 @@ def get_conn():
     return psycopg2.connect(os.environ['DATABASE_URL'])
 
 
-def publish_telegram(content: str, image_urls: list) -> tuple:
-    token = os.environ.get('TG_BOT_TOKEN', '')
-    channel_id = os.environ.get('TG_CHANNEL_ID', '')
+def get_setting(cur, key: str) -> str:
+    cur.execute('SELECT value FROM app_settings WHERE key = %s', (key,))
+    row = cur.fetchone()
+    return row[0] if row else ''
+
+
+def get_social_extra(cur, platform: str) -> dict:
+    cur.execute('SELECT extra_data FROM social_accounts WHERE platform = %s', (platform,))
+    row = cur.fetchone()
+    if row and row[0]:
+        return row[0] if isinstance(row[0], dict) else json.loads(row[0])
+    return {}
+
+
+def publish_telegram(cur, content: str, image_urls: list) -> tuple:
+    token = get_setting(cur, 'telegram_bot_token')
+    extra = get_social_extra(cur, 'telegram')
+    channel_id = extra.get('channel_id', '')
     if not token or not channel_id:
-        return False, 'TG_BOT_TOKEN или TG_CHANNEL_ID не настроены'
+        return False, 'Bot Token или ID канала не настроены. Проверьте Настройки → Telegram.'
 
     try:
         if image_urls:
@@ -48,11 +63,12 @@ def publish_telegram(content: str, image_urls: list) -> tuple:
         return False, str(e)
 
 
-def publish_vk(content: str, image_urls: list) -> tuple:
-    token = os.environ.get('VK_ACCESS_TOKEN', '')
-    group_id = os.environ.get('VK_GROUP_ID', '')
+def publish_vk(cur, content: str, image_urls: list) -> tuple:
+    token = get_setting(cur, 'vk_access_token')
+    extra = get_social_extra(cur, 'vk')
+    group_id = extra.get('group_id', '')
     if not token or not group_id:
-        return False, 'VK_ACCESS_TOKEN или VK_GROUP_ID не настроены'
+        return False, 'Access Token или ID группы не настроены. Проверьте Настройки → ВКонтакте.'
 
     try:
         params = {
@@ -72,16 +88,16 @@ def publish_vk(content: str, image_urls: list) -> tuple:
         return False, str(e)
 
 
-def publish_instagram(content: str, image_urls: list) -> tuple:
-    token = os.environ.get('IG_ACCESS_TOKEN', '')
-    user_id = os.environ.get('IG_USER_ID', '')
+def publish_instagram(cur, content: str, image_urls: list) -> tuple:
+    token = get_setting(cur, 'instagram_access_token')
+    extra = get_social_extra(cur, 'instagram')
+    user_id = extra.get('ig_user_id', '')
     if not token or not user_id:
-        return False, 'IG_ACCESS_TOKEN или IG_USER_ID не настроены'
+        return False, 'Access Token или ID аккаунта не настроены. Проверьте Настройки → Instagram.'
     if not image_urls:
         return False, 'Instagram требует изображение'
 
     try:
-        # Step 1: Create container
         create_url = f'https://graph.facebook.com/v18.0/{user_id}/media'
         payload = json.dumps({
             'image_url': image_urls[0],
@@ -96,7 +112,6 @@ def publish_instagram(content: str, image_urls: list) -> tuple:
         if not container_id:
             return False, str(result)
 
-        # Step 2: Publish
         publish_url = f'https://graph.facebook.com/v18.0/{user_id}/media_publish'
         pub_payload = json.dumps({'creation_id': container_id, 'access_token': token}).encode()
         req2 = urllib.request.Request(publish_url, data=pub_payload, headers={'Content-Type': 'application/json'}, method='POST')
@@ -110,11 +125,12 @@ def publish_instagram(content: str, image_urls: list) -> tuple:
         return False, str(e)
 
 
-def publish_dzen(content: str, title: str) -> tuple:
-    token = os.environ.get('DZEN_OAUTH_TOKEN', '')
-    channel_id = os.environ.get('DZEN_CHANNEL_ID', '')
+def publish_dzen(cur, content: str, title: str) -> tuple:
+    token = get_setting(cur, 'dzen_oauth_token')
+    extra = get_social_extra(cur, 'dzen')
+    channel_id = extra.get('channel_id', '')
     if not token or not channel_id:
-        return False, 'DZEN_OAUTH_TOKEN или DZEN_CHANNEL_ID не настроены'
+        return False, 'OAuth Token или ID канала не настроены. Проверьте Настройки → Яндекс Дзен.'
 
     try:
         url = 'https://dzen.ru/api/v3/publisher/articles'
@@ -149,52 +165,46 @@ def handler(event: dict, context) -> dict:
     title = body.get('title', '')
     image_urls = body.get('image_urls', [])
 
-    # Load post from DB if post_id given
-    if post_id and not content:
-        conn = get_conn()
-        cur = conn.cursor()
-        try:
+    conn = get_conn()
+    cur = conn.cursor()
+
+    try:
+        if post_id and not content:
             cur.execute('SELECT content, title, image_urls FROM posts WHERE id = %s', (post_id,))
             row = cur.fetchone()
             if row:
                 content, title = row[0], row[1] or ''
                 image_urls = list(row[2]) if row[2] else []
-        finally:
-            cur.close()
-            conn.close()
 
-    results = {}
-    errors = {}
+        results = {}
+        errors = {}
 
-    for platform in platforms:
-        if platform == 'telegram':
-            ok, info = publish_telegram(content, image_urls)
-        elif platform == 'vk':
-            ok, info = publish_vk(content, image_urls)
-        elif platform == 'instagram':
-            ok, info = publish_instagram(content, image_urls)
-        elif platform == 'dzen':
-            ok, info = publish_dzen(content, title)
-        else:
-            ok, info = False, 'Unknown platform'
+        for platform in platforms:
+            if platform == 'telegram':
+                ok, info = publish_telegram(cur, content, image_urls)
+            elif platform == 'vk':
+                ok, info = publish_vk(cur, content, image_urls)
+            elif platform == 'instagram':
+                ok, info = publish_instagram(cur, content, image_urls)
+            elif platform == 'dzen':
+                ok, info = publish_dzen(cur, content, title)
+            else:
+                ok, info = False, 'Unknown platform'
 
-        results[platform] = ok
-        if not ok:
-            errors[platform] = info
+            results[platform] = ok
+            if not ok:
+                errors[platform] = info
 
-    # Update post status in DB
-    if post_id and any(results.values()):
-        conn = get_conn()
-        cur = conn.cursor()
-        try:
+        if post_id and any(results.values()):
             cur.execute("UPDATE posts SET status = 'published' WHERE id = %s", (post_id,))
             conn.commit()
-        finally:
-            cur.close()
-            conn.close()
 
-    return {
-        'statusCode': 200,
-        'headers': CORS_HEADERS,
-        'body': json.dumps({'results': results, 'errors': errors}),
-    }
+        return {
+            'statusCode': 200,
+            'headers': CORS_HEADERS,
+            'body': json.dumps({'results': results, 'errors': errors}),
+        }
+
+    finally:
+        cur.close()
+        conn.close()

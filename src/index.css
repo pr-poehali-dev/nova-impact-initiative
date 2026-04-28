@@ -2,48 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Шрифт Sentient заменен на PT Serif с поддержкой кириллицы */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
 @layer base {
   :root {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
+    --background: 220 20% 7%;
+    --foreground: 210 40% 96%;
 
-    --card: 0 0% 0%;
-    --card-foreground: 0 0% 100%;
+    --card: 220 18% 10%;
+    --card-foreground: 210 40% 96%;
 
-    --popover: 0 0% 0%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 220 18% 10%;
+    --popover-foreground: 210 40% 96%;
 
-    --primary: 48 100% 50%;
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 220 16% 16%;
+    --secondary-foreground: 210 40% 96%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 220 16% 16%;
+    --muted-foreground: 215 20% 55%;
 
-    --accent: 0 0% 15%;
+    --accent: 217 91% 60%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 26%;
-    --input: 0 0% 26%;
-    --ring: 48 100% 50%;
+    --border: 220 16% 18%;
+    --input: 220 16% 18%;
+    --ring: 217 91% 60%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 5%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 48 100% 50%;
+    --sidebar-background: 220 22% 5%;
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 48 100% 50%;
+    --sidebar-accent: 220 16% 14%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 220 16% 12%;
+    --sidebar-ring: 217 91% 60%;
   }
 }
 
@@ -53,72 +53,53 @@
   }
 
   body {
-    @apply text-foreground;
-    font-family: Arial, Helvetica, sans-serif;
-    background: transparent;
-  }
-
-  html {
-    @apply bg-background;
+    @apply bg-background text-foreground;
+    font-family: "Inter", sans-serif;
   }
 }
 
 @layer utilities {
-  .container {
-    margin-inline: auto;
-    padding-inline: 1rem;
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(217, 91%, 70%), hsl(262, 83%, 70%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
-  @media (min-width: 768px) {
-    .container {
-      padding-inline: 2rem;
-    }
+  .card-glow {
+    box-shadow:
+      0 0 0 1px hsl(var(--border)),
+      0 4px 24px rgba(59, 130, 246, 0.08);
   }
 
-  @media (min-width: 1280px) {
-    .container {
-      padding-inline: 3rem;
-    }
+  .card-glow:hover {
+    box-shadow:
+      0 0 0 1px hsl(217, 91%, 60%, 0.3),
+      0 4px 32px rgba(59, 130, 246, 0.15);
   }
 
-  .font-sentient {
-    font-family: "PT Serif", serif;
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
   }
 
-  .shadow-glow {
-    box-shadow: 0 0 8px 2px var(--tw-shadow-color);
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
   }
-}
 
-#webgl {
-  top: 0;
-  left: 0;
-  position: fixed;
-  height: 100svh;
-  width: 100%;
-  z-index: 0;
-}
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 2px;
+  }
 
-#webgl canvas {
-  width: 100%;
-  height: 100%;
-}
+  .gradient-card {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    transition: box-shadow 0.2s;
+  }
 
-/* Vignette effect overlay */
-#webgl::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(
-    ellipse at center,
-    transparent 30%,
-    rgba(0, 0, 0, 0.6) 100%
-  );
-}
-
-/* Semi-transparent background for content sections below Hero */
-.content-section {
-  background: rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(8px);
+  .gradient-card:hover {
+    box-shadow:
+      0 0 0 1px hsl(217 91% 60% / 0.2),
+      0 4px 24px rgba(59, 130, 246, 0.1);
+  }
 }
