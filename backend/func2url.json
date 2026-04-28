@@ -1,0 +1,9 @@
+{
+  "posts": "https://functions.poehali.dev/90c2fb25-a445-42ea-9a55-3db9c2a5110e",
+  "media": "https://functions.poehali.dev/30ac477f-84e1-453b-abbf-c3ba75947269",
+  "scheduler": "https://functions.poehali.dev/e422afd7-0d4c-4e34-8e76-26340e5310b8",
+  "generate-post": "https://functions.poehali.dev/077c1f4f-19a9-48f2-9c09-47c060d3dd03",
+  "news": "https://functions.poehali.dev/5e72ac87-214b-4e5a-a635-b876e8ab6eb5",
+  "publish": "https://functions.poehali.dev/282f21bf-018d-41e7-92e4-05a2b0592bb7",
+  "social-accounts": "https://functions.poehali.dev/97786b83-ad15-4514-ac7c-e7714fd82e2e"
+}

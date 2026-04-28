@@ -1,0 +1,18 @@
+{
+  "tests": [
+    {
+      "name": "Get stats",
+      "method": "GET",
+      "path": "/?action=stats",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "List posts",
+      "method": "GET",
+      "path": "/?action=list",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}

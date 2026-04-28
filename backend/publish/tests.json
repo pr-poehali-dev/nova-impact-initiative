@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Publish - no platforms",
+      "method": "POST",
+      "path": "/",
+      "body": {"platforms": [], "content": "test"},
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}
