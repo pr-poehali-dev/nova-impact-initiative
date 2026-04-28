@@ -35,7 +35,11 @@ def get_s3():
 
 def call_groq(prompt: str, system: str) -> str:
     """Вызов Groq API (llama-3.3-70b) для генерации текста"""
-    api_key = os.environ['GROQ_API_KEY']
+    api_key = os.environ.get('GROQ_API_KEY', '')
+    if not api_key:
+        raise ValueError('GROQ_API_KEY не найден в переменных окружения')
+
+    import urllib.error
     payload = json.dumps({
         'model': 'llama-3.3-70b-versatile',
         'messages': [
@@ -55,8 +59,12 @@ def call_groq(prompt: str, system: str) -> str:
         },
         method='POST',
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        result = json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode('utf-8', errors='replace')
+        raise ValueError(f'Groq API error {e.code}: {body[:300]}')
     return result['choices'][0]['message']['content'].strip()
 
 
@@ -182,7 +190,14 @@ def handler(event: dict, context) -> dict:
         else:
             user_prompt = 'Напиши пост о последних трендах в мире ИИ'
 
-        text = call_groq(user_prompt, system_prompt)
+        try:
+            text = call_groq(user_prompt, system_prompt)
+        except Exception as e:
+            return {
+                'statusCode': 500,
+                'headers': CORS_HEADERS,
+                'body': json.dumps({'error': f'Ошибка AI: {str(e)}'}),
+            }
 
         try:
             if text.startswith('```'):
