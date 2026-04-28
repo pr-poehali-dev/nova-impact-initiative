@@ -1,4 +1,4 @@
-import func2url from '../../func2url.json';
+import func2url from '../../backend/func2url.json';
 
 const getUrl = (fn: string) => (func2url as Record<string, string>)[fn] || '';
 
