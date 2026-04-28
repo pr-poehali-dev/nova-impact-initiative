@@ -34,15 +34,15 @@ def get_s3():
     )
 
 
-def call_groq(prompt: str, system: str) -> str:
-    """Вызов Groq API (llama-3.3-70b) для генерации текста"""
-    api_key = os.environ.get('GROQ_API_KEY', '')
-    if not api_key:
-        raise ValueError('GROQ_API_KEY не найден в переменных окружения')
-
+def call_ai(prompt: str, system: str) -> str:
+    """Вызов OpenRouter API (meta-llama/llama-3.3-70b-instruct) для генерации текста"""
     import urllib.error
+    api_key = os.environ.get('OPENROUTER_API_KEY', '')
+    if not api_key:
+        raise ValueError('OPENROUTER_API_KEY не найден в переменных окружения')
+
     payload = json.dumps({
-        'model': 'llama-3.3-70b-versatile',
+        'model': 'meta-llama/llama-3.3-70b-instruct',
         'messages': [
             {'role': 'system', 'content': system},
             {'role': 'user', 'content': prompt},
@@ -52,11 +52,12 @@ def call_groq(prompt: str, system: str) -> str:
     }).encode()
 
     req = urllib.request.Request(
-        'https://api.groq.com/openai/v1/chat/completions',
+        'https://openrouter.ai/api/v1/chat/completions',
         data=payload,
         headers={
             'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://poehali.dev',
         },
         method='POST',
     )
@@ -65,7 +66,7 @@ def call_groq(prompt: str, system: str) -> str:
             result = json.loads(resp.read())
     except urllib.error.HTTPError as e:
         body = e.read().decode('utf-8', errors='replace')
-        raise ValueError(f'Groq API error {e.code}: {body[:300]}')
+        raise ValueError(f'OpenRouter API error {e.code}: {body[:300]}')
     return result['choices'][0]['message']['content'].strip()
 
 
@@ -80,7 +81,7 @@ def make_image_prompt(post_content: str, index: int, total: int) -> str:
         f"Create prompt #{index + 1} of {total} for this AI post. "
         f"Each image must show a different visual aspect:\n\n{post_content[:600]}"
     )
-    return call_groq(user, system)
+    return call_ai(user, system)
 
 
 def generate_flux_image(prompt: str) -> bytes:
@@ -107,7 +108,7 @@ def upload_to_s3(image_bytes: bytes, filename: str) -> str:
 
 
 def handler(event: dict, context) -> dict:
-    """Генерация текста поста и изображений карусели через Groq (llama-3.3-70b) + FLUX"""
+    """Генерация текста поста и изображений карусели через OpenRouter (llama-3.3-70b) + FLUX"""
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': ''}
 
@@ -192,7 +193,7 @@ def handler(event: dict, context) -> dict:
             user_prompt = 'Напиши пост о последних трендах в мире ИИ'
 
         try:
-            text = call_groq(user_prompt, system_prompt)
+            text = call_ai(user_prompt, system_prompt)
         except Exception as e:
             return {
                 'statusCode': 500,
